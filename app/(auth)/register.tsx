@@ -7,31 +7,58 @@ import { fonts } from '~/styles';
 import useValidate, { ValidationRules } from '~/hooks/useValidate';
 
 export default function RegisterScreen() {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState({
+    name: '',
     email: '',
+    whatsapp: '',
     password: '',
+    confirmPassword: '',
   });
   const { validate } = useValidate();
 
-  const validationSchema: ValidationRules = {
+  const step1ValidationSchema: ValidationRules = {
+    name: {
+      type: "string",
+      required: true,
+      message: "Please enter your name"
+    },
     email: {
       type: "email",
       required: true,
       message: "Please enter a valid email address"
     },
+    whatsapp: {
+      type: "string",
+      required: true,
+      message: "Please enter your WhatsApp number"
+    }
+  };
+
+  const step2ValidationSchema: ValidationRules = {
     password: {
       type: "string",
       required: true,
       minLength: 6,
       message: "Password must be at least 6 characters"
     },
+    confirmPassword: {
+      type: "string",
+      required: true,
+      message: "Please confirm your password"
+    }
   };
 
-  const validateField = (name: string, value: string) => {
-    const fieldSchema = { [name]: validationSchema[name] };
+  const validateField = (name: string, value: string, schema: ValidationRules) => {
+    const fieldSchema = { [name]: schema[name] };
     const fieldData = { [name]: value };
     const { errors } = validate(fieldData, fieldSchema);
     setErrors(prev => ({
@@ -40,16 +67,41 @@ export default function RegisterScreen() {
     }));
   };
 
+  const handleStep1Continue = () => {
+    const { isValid, errors } = validate(
+      { name, email, whatsapp },
+      step1ValidationSchema
+    );
+    setErrors(prev => ({
+      ...prev,
+      name: errors.name || '',
+      email: errors.email || '',
+      whatsapp: errors.whatsapp || '',
+    }));
+
+    if (isValid) {
+      setCurrentStep(2);
+    }
+  };
+
   const handleRegister = async () => {
+    if (password !== confirmPassword) {
+      setErrors(prev => ({
+        ...prev,
+        confirmPassword: "Passwords do not match"
+      }));
+      return;
+    }
 
     const { isValid, errors } = validate(
-      { email, password },
-      validationSchema
+      { password, confirmPassword },
+      step2ValidationSchema
     );
-    setErrors({
-      email: errors.email || '',
+    setErrors(prev => ({
+      ...prev,
       password: errors.password || '',
-    });
+      confirmPassword: errors.confirmPassword || '',
+    }));
 
     if (!isValid) {
       return;
@@ -57,7 +109,7 @@ export default function RegisterScreen() {
 
     setIsLoading(true);
     try {
-      await authService.register({ email, password });
+      await authService.register({ name, email, whatsapp, password });
       Toast.show({
         type: 'success',
         text1: 'Success',
@@ -75,82 +127,202 @@ export default function RegisterScreen() {
     }
   };
 
+  const renderStep1 = () => (
+    <>
+      {/* Name Field */}
+      <View className="mb-6">
+        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">Seu nome</Text>
+        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
+          <View className="w-6 h-6 mr-3 items-center justify-center">
+            <Text className="text-gray-400 text-base">👤</Text>
+          </View>
+          <TextInput
+            style={fonts.text}
+            className="flex-1 text-base text-gray-800"
+            placeholder="ex: Luiz Andrade"
+            placeholderTextColor="#9CA3AF"
+            value={name}
+            onChangeText={(text) => {
+              setName(text);
+              validateField('name', text, step1ValidationSchema);
+            }}
+          />
+        </View>
+        {errors.name ? (
+          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.name}</Text>
+        ) : null}
+      </View>
+
+      {/* Email Field */}
+      <View className="mb-6">
+        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">E-mail</Text>
+        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
+          <View className="w-6 h-6 mr-3 items-center justify-center">
+            <Text className="text-gray-400 text-base">✉</Text>
+          </View>
+          <TextInput
+            style={fonts.text}
+            className="flex-1 text-base text-gray-800"
+            placeholder="nome@dominio.com"
+            placeholderTextColor="#9CA3AF"
+            value={email}
+            onChangeText={(text) => {
+              setEmail(text);
+              validateField('email', text, step1ValidationSchema);
+            }}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+        {errors.email ? (
+          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.email}</Text>
+        ) : null}
+      </View>
+
+      {/* WhatsApp Field */}
+      <View className="mb-12">
+        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">WhatsApp</Text>
+        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
+          <View className="w-6 h-6 mr-3 items-center justify-center">
+            <Text className="text-gray-400 text-base">📱</Text>
+          </View>
+          <TextInput
+            style={fonts.text}
+            className="flex-1 text-base text-gray-800"
+            placeholder="(00) 0 0000-0000"
+            placeholderTextColor="#9CA3AF"
+            value={whatsapp}
+            onChangeText={(text) => {
+              setWhatsapp(text);
+              validateField('whatsapp', text, step1ValidationSchema);
+            }}
+            keyboardType="phone-pad"
+          />
+        </View>
+        {errors.whatsapp ? (
+          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.whatsapp}</Text>
+        ) : null}
+      </View>
+
+      {/* Continue Button */}
+      <TouchableOpacity 
+        className="bg-blue-500 rounded-xl py-4 items-center mb-8"
+        onPress={handleStep1Continue}
+      >
+        <Text style={fonts.textSemiBold} className="text-white text-lg">Continuar</Text>
+      </TouchableOpacity>
+    </>
+  );
+
+  const renderStep2 = () => (
+    <>
+      {/* Password Field */}
+      <View className="mb-6">
+        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">Senha</Text>
+        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
+          <View className="w-6 h-6 mr-3 items-center justify-center">
+            <Text className="text-gray-400 text-base">🔒</Text>
+          </View>
+          <TextInput
+            style={fonts.text}
+            className="flex-1 text-base text-gray-800"
+            placeholder="Senha"
+            placeholderTextColor="#9CA3AF"
+            value={password}
+            onChangeText={(text) => {
+              setPassword(text);
+              validateField('password', text, step2ValidationSchema);
+            }}
+            secureTextEntry={!showPassword}
+          />
+          <TouchableOpacity 
+            onPress={() => setShowPassword(!showPassword)}
+            className="w-6 h-6 items-center justify-center"
+          >
+            <Text className="text-gray-400 text-base">{showPassword ? '👁' : '👁'}</Text>
+          </TouchableOpacity>
+        </View>
+        {errors.password ? (
+          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.password}</Text>
+        ) : null}
+      </View>
+
+      {/* Confirm Password Field */}
+      <View className="mb-12">
+        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">Confirmar senha</Text>
+        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
+          <View className="w-6 h-6 mr-3 items-center justify-center">
+            <Text className="text-gray-400 text-base">🔒</Text>
+          </View>
+          <TextInput
+            style={fonts.text}
+            className="flex-1 text-base text-gray-800"
+            placeholder="Senha"
+            placeholderTextColor="#9CA3AF"
+            value={confirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+              if (text !== password) {
+                setErrors(prev => ({
+                  ...prev,
+                  confirmPassword: "Passwords do not match"
+                }));
+              } else {
+                setErrors(prev => ({
+                  ...prev,
+                  confirmPassword: ""
+                }));
+              }
+            }}
+            secureTextEntry={!showConfirmPassword}
+          />
+          <TouchableOpacity 
+            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="w-6 h-6 items-center justify-center"
+          >
+            <Text className="text-gray-400 text-base">{showConfirmPassword ? '👁' : '👁'}</Text>
+          </TouchableOpacity>
+        </View>
+        {errors.confirmPassword ? (
+          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.confirmPassword}</Text>
+        ) : null}
+      </View>
+
+      {/* Continue Button */}
+      <TouchableOpacity 
+        className="bg-blue-500 rounded-xl py-4 items-center mb-8"
+        onPress={handleRegister}
+        disabled={isLoading}
+      >
+        <Text style={fonts.textSemiBold} className="text-white text-lg">
+          {isLoading ? 'Criando conta...' : 'Continuar'}
+        </Text>
+      </TouchableOpacity>
+    </>
+  );
+
   return (
     <View className="flex-1 bg-white">
-      {/* Background Pattern */}
-      <View className="absolute top-0 left-0 right-0 h-64 bg-blue-500 rounded-b-[50px]" />
-      
-      <View className="flex-1 px-6 pt-20">
-        {/* Logo and Title */}
-        <View className="items-center mb-12">
-          <View className="w-20 h-20 bg-white rounded-full items-center justify-center mb-4 shadow-lg">
-            <Text style={fonts.textBold} className="text-3xl text-blue-500">$</Text>
-          </View>
-          <Text style={fonts.textBold} className="text-3xl text-white mb-2">Smile Care</Text>
-          <Text style={fonts.textLight} className="text-white/80">Create your account</Text>
+      <View className="flex-1 px-6 pt-16">
+        {/* Header */}
+        <View className="flex-row items-center mb-12">
+          <TouchableOpacity 
+            onPress={() => currentStep === 1 ? router.back() : setCurrentStep(1)}
+            className="mr-4"
+          >
+            <Text className="text-2xl">←</Text>
+          </TouchableOpacity>
+          <Text style={fonts.textSemiBold} className="text-xl text-black">Criando sua conta</Text>
         </View>
 
-        {/* Register Card */}
-        <View className="bg-white rounded-2xl p-6 shadow-lg">
-          <Text style={fonts.textSemiBold} className="text-2xl text-gray-800 mb-6">Sign Up</Text>
+        {/* Form Content */}
+        {currentStep === 1 ? renderStep1() : renderStep2()}
+      </View>
 
-          <View className="space-y-4">
-            <View>
-              <Text style={fonts.textLight} className="text-gray-600 mb-2">Email</Text>
-              <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800"
-                placeholder="Enter your email"
-                value={email}
-                onChangeText={(text) => {
-                  setEmail(text);
-                  validateField('email', text);
-                }}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-              {errors.email ? (
-                <Text style={fonts.text} className="text-red-500 text-sm mt-1">{errors.email}</Text>
-              ) : null}
-            </View>
-
-            <View>
-              <Text style={fonts.textLight} className="text-gray-600 mb-2">Password</Text>
-              <TextInput
-                className="bg-gray-50 border border-gray-200 rounded-xl p-4 text-gray-800"
-                placeholder="Enter your password"
-                value={password}
-                onChangeText={(text) => {
-                  setPassword(text);
-                  validateField('password', text);
-                }}
-                secureTextEntry
-              />
-              {errors.password ? (
-                <Text style={fonts.text} className="text-red-500 text-sm mt-1">{errors.password}</Text>
-              ) : null}
-            </View>
-
-            <TouchableOpacity
-              className="bg-blue-500 p-4 rounded-xl mt-6"
-              onPress={handleRegister}
-              disabled={isLoading}
-            >
-              <Text style={fonts.textSemiBold} className="text-white text-center font-semibold text-lg">
-                {isLoading ? 'Creating Account...' : 'Create Account'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => router.push('/(auth)/login')}
-              className="mt-4"
-            >
-              <Text style={fonts.textLight} className="text-center text-gray-600">
-                Already have an account? Login
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+      {/* Bottom Home Indicator */}
+      <View className="items-center pb-2">
+        <View className="w-32 h-1 bg-black rounded-full" />
       </View>
     </View>
   );
-} 
+}
