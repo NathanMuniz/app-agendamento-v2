@@ -1,322 +1,285 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { router } from 'expo-router';
-import { authService } from '../../services/api';
-import Toast from 'react-native-toast-message';
-import { fonts } from '~/styles';
-import useValidate, { ValidationRules } from '~/hooks/useValidate';
+"use client"
+
+import { useState } from "react"
+import { View, Text, TouchableOpacity } from "react-native"
+import { router } from "expo-router"
+import { authService } from "../../services/api"
+import Toast from "react-native-toast-message"
+import { fonts } from "~/styles"
+import useValidate, { type ValidationRules } from "~/hooks/useValidate"
+import StepOne from "~/components/register/step-one"
+import StepTwo from "~/components/register/step-two"
+import StepThree from "~/components/register/step-three"
+
+// Componentes das etapas
 
 export default function RegisterScreen() {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [whatsapp, setWhatsapp] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState({
-    name: '',
-    email: '',
-    whatsapp: '',
-    password: '',
-    confirmPassword: '',
-  });
-  const { validate } = useValidate();
+  // Dados pessoais (Step 1)
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [whatsapp, setWhatsapp] = useState("")
 
+  // Dados da clínica (Step 2)
+  const [clinicName, setClinicName] = useState("")
+  const [cnpj, setCnpj] = useState("")
+  const [address, setAddress] = useState("")
+
+  // Dados de senha (Step 3)
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Controle de UI
+  const [currentStep, setCurrentStep] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
+
+  // Erros de validação
+  const [errors, setErrors] = useState({
+    name: "",
+    email: "",
+    whatsapp: "",
+    clinicName: "",
+    cnpj: "",
+    address: "",
+    password: "",
+    confirmPassword: "",
+  })
+
+  const { validate } = useValidate()
+
+  // Esquemas de validação para cada etapa
   const step1ValidationSchema: ValidationRules = {
     name: {
       type: "string",
       required: true,
-      message: "Please enter your name"
+      message: "Por favor, informe seu nome",
     },
     email: {
       type: "email",
       required: true,
-      message: "Please enter a valid email address"
+      message: "Por favor, informe um e-mail válido",
     },
     whatsapp: {
       type: "string",
       required: true,
-      message: "Please enter your WhatsApp number"
-    }
-  };
+      message: "Por favor, informe seu número de WhatsApp",
+    },
+  }
 
   const step2ValidationSchema: ValidationRules = {
+    clinicName: {
+      type: "string",
+      required: true,
+      message: "Por favor, informe o nome da clínica",
+    },
+    cnpj: {
+      type: "string",
+      required: true,
+      message: "Por favor, informe o CNPJ da clínica",
+    },
+    address: {
+      type: "string",
+      required: true,
+      message: "Por favor, informe o endereço da clínica",
+    },
+  }
+
+  const step3ValidationSchema: ValidationRules = {
     password: {
       type: "string",
       required: true,
       minLength: 6,
-      message: "Password must be at least 6 characters"
+      message: "A senha deve ter pelo menos 6 caracteres",
     },
     confirmPassword: {
       type: "string",
       required: true,
-      message: "Please confirm your password"
-    }
-  };
+      message: "Por favor, confirme sua senha",
+    },
+  }
 
+  // Função para validar um campo específico
   const validateField = (name: string, value: string, schema: ValidationRules) => {
-    const fieldSchema = { [name]: schema[name] };
-    const fieldData = { [name]: value };
-    const { errors } = validate(fieldData, fieldSchema);
-    setErrors(prev => ({
+    const fieldSchema = { [name]: schema[name as keyof typeof schema] }
+    const fieldData = { [name]: value }
+    const { errors: validationErrors } = validate(fieldData, fieldSchema)
+    setErrors((prev) => ({
       ...prev,
-      [name]: errors[name] || ""
-    }));
-  };
+      [name]: validationErrors[name as keyof typeof validationErrors] || "",
+    }))
+  }
 
+  // Funções para navegação entre etapas
   const handleStep1Continue = () => {
-    const { isValid, errors } = validate(
-      { name, email, whatsapp },
-      step1ValidationSchema
-    );
-    setErrors(prev => ({
+    const { isValid, errors: validationErrors } = validate({ name, email, whatsapp }, step1ValidationSchema)
+    setErrors((prev) => ({
       ...prev,
-      name: errors.name || '',
-      email: errors.email || '',
-      whatsapp: errors.whatsapp || '',
-    }));
+      name: validationErrors.name || "",
+      email: validationErrors.email || "",
+      whatsapp: validationErrors.whatsapp || "",
+    }))
 
     if (isValid) {
-      setCurrentStep(2);
+      setCurrentStep(2)
     }
-  };
+  }
 
+  const handleStep2Continue = () => {
+    const { isValid, errors: validationErrors } = validate({ clinicName, cnpj, address }, step2ValidationSchema)
+    setErrors((prev) => ({
+      ...prev,
+      clinicName: validationErrors.clinicName || "",
+      cnpj: validationErrors.cnpj || "",
+      address: validationErrors.address || "",
+    }))
+
+    if (isValid) {
+      setCurrentStep(3)
+    }
+  }
+
+  // Função para registrar o usuário
   const handleRegister = async () => {
     if (password !== confirmPassword) {
-      setErrors(prev => ({
+      setErrors((prev) => ({
         ...prev,
-        confirmPassword: "Passwords do not match"
-      }));
-      return;
+        confirmPassword: "As senhas não coincidem",
+      }))
+      return
     }
 
-    const { isValid, errors } = validate(
-      { password, confirmPassword },
-      step2ValidationSchema
-    );
-    setErrors(prev => ({
+    const { isValid, errors: validationErrors } = validate({ password, confirmPassword }, step3ValidationSchema)
+    setErrors((prev) => ({
       ...prev,
-      password: errors.password || '',
-      confirmPassword: errors.confirmPassword || '',
-    }));
+      password: validationErrors.password || "",
+      confirmPassword: validationErrors.confirmPassword || "",
+    }))
 
     if (!isValid) {
-      return;
+      return
     }
 
-    setIsLoading(true);
+    setIsLoading(true)
     try {
-      await authService.register({ name, email, whatsapp, password });
+      await authService.register({
+        name,
+        email,
+        whatsapp,
+        password,
+        clinicName,
+        cnpj,
+        address,
+      })
+
       Toast.show({
-        type: 'success',
-        text1: 'Success',
-        text2: 'Registration successful! Please login.'
-      });
-      router.replace('/(auth)/login');
+        type: "success",
+        text1: "Sucesso",
+        text2: "Registro realizado com sucesso! Por favor, faça login.",
+      })
+      router.replace("/(auth)/login")
     } catch (error) {
       Toast.show({
-        type: 'error',
-        text1: 'Registration failed',
-        text2: error instanceof Error ? error.message : 'Registration failed',
-      });
+        type: "error",
+        text1: "Falha no registro",
+        text2: error instanceof Error ? error.message : "Falha no registro",
+      })
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
-  const renderStep1 = () => (
-    <>
-      {/* Name Field */}
-      <View className="mb-6">
-        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">Seu nome</Text>
-        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
-          <View className="w-6 h-6 mr-3 items-center justify-center">
-            <Text className="text-gray-400 text-base">👤</Text>
-          </View>
-          <TextInput
-            style={fonts.text}
-            className="flex-1 text-base text-gray-800"
-            placeholder="ex: Luiz Andrade"
-            placeholderTextColor="#9CA3AF"
-            value={name}
-            onChangeText={(text) => {
-              setName(text);
-              validateField('name', text, step1ValidationSchema);
+  // Renderização do conteúdo conforme a etapa atual
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <StepOne
+            name={name}
+            email={email}
+            whatsapp={whatsapp}
+            errors={{
+              name: errors.name,
+              email: errors.email,
+              whatsapp: errors.whatsapp,
             }}
+            step1ValidationSchema={step1ValidationSchema}
+            setName={(text: string) => setName(text)}
+            setEmail={(text: string) => setEmail(text)}
+            setWhatsapp={(text: string) => setWhatsapp(text)}
+            validateField={(name, value, schema) => validateField(name, value, schema)}
+            handleStep1Continue={handleStep1Continue}
           />
-        </View>
-        {errors.name ? (
-          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.name}</Text>
-        ) : null}
-      </View>
-
-      {/* Email Field */}
-      <View className="mb-6">
-        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">E-mail</Text>
-        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
-          <View className="w-6 h-6 mr-3 items-center justify-center">
-            <Text className="text-gray-400 text-base">✉</Text>
-          </View>
-          <TextInput
-            style={fonts.text}
-            className="flex-1 text-base text-gray-800"
-            placeholder="nome@dominio.com"
-            placeholderTextColor="#9CA3AF"
-            value={email}
-            onChangeText={(text) => {
-              setEmail(text);
-              validateField('email', text, step1ValidationSchema);
+        )
+      case 2:
+        return (
+          <StepTwo
+            clinicName={clinicName}
+            cnpj={cnpj}
+            address={address}
+            errors={{
+              clinicName: errors.clinicName,
+              cnpj: errors.cnpj,
+              address: errors.address,
             }}
-            keyboardType="email-address"
-            autoCapitalize="none"
+            step2ValidationSchema={step2ValidationSchema}
+            setClinicName={(text: string) => setClinicName(text)}
+            setCnpj={(text: string) => setCnpj(text)}
+            setAddress={(text: string) => setAddress(text)}
+            validateField={(name, value, schema) => validateField(name, value, schema)}
+            handleStep2Continue={handleStep2Continue}
           />
-        </View>
-        {errors.email ? (
-          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.email}</Text>
-        ) : null}
-      </View>
-
-      {/* WhatsApp Field */}
-      <View className="mb-12">
-        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">WhatsApp</Text>
-        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
-          <View className="w-6 h-6 mr-3 items-center justify-center">
-            <Text className="text-gray-400 text-base">📱</Text>
-          </View>
-          <TextInput
-            style={fonts.text}
-            className="flex-1 text-base text-gray-800"
-            placeholder="(00) 0 0000-0000"
-            placeholderTextColor="#9CA3AF"
-            value={whatsapp}
-            onChangeText={(text) => {
-              setWhatsapp(text);
-              validateField('whatsapp', text, step1ValidationSchema);
+        )
+      case 3:
+        return (
+          <StepThree
+            password={password}
+            confirmPassword={confirmPassword}
+            errors={{
+              password: errors.password,
+              confirmPassword: errors.confirmPassword,
             }}
-            keyboardType="phone-pad"
+            showPassword={showPassword}
+            showConfirmPassword={showConfirmPassword}
+            step3ValidationSchema={step3ValidationSchema}
+            setPassword={(text: string) => setPassword(text)}
+            setConfirmPassword={(text: string) => setConfirmPassword(text)}
+            setShowPassword={(show: boolean) => setShowPassword(show)}
+            setShowConfirmPassword={(show: boolean) => setShowConfirmPassword(show)}
+            validateField={(name, value, schema) => validateField(name, value, schema)}
+            handleRegister={handleRegister}
+            isLoading={isLoading}
           />
-        </View>
-        {errors.whatsapp ? (
-          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.whatsapp}</Text>
-        ) : null}
-      </View>
+        )
+      default:
+        return null
+    }
+  }
 
-      {/* Continue Button */}
-      <TouchableOpacity 
-        className="bg-blue-500 rounded-xl py-4 items-center mb-8"
-        onPress={handleStep1Continue}
-      >
-        <Text style={fonts.textSemiBold} className="text-white text-lg">Continuar</Text>
-      </TouchableOpacity>
-    </>
-  );
-
-  const renderStep2 = () => (
-    <>
-      {/* Password Field */}
-      <View className="mb-6">
-        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">Senha</Text>
-        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
-          <View className="w-6 h-6 mr-3 items-center justify-center">
-            <Text className="text-gray-400 text-base">🔒</Text>
-          </View>
-          <TextInput
-            style={fonts.text}
-            className="flex-1 text-base text-gray-800"
-            placeholder="Senha"
-            placeholderTextColor="#9CA3AF"
-            value={password}
-            onChangeText={(text) => {
-              setPassword(text);
-              validateField('password', text, step2ValidationSchema);
-            }}
-            secureTextEntry={!showPassword}
-          />
-          <TouchableOpacity 
-            onPress={() => setShowPassword(!showPassword)}
-            className="w-6 h-6 items-center justify-center"
-          >
-            <Text className="text-gray-400 text-base">{showPassword ? '👁' : '👁'}</Text>
-          </TouchableOpacity>
-        </View>
-        {errors.password ? (
-          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.password}</Text>
-        ) : null}
-      </View>
-
-      {/* Confirm Password Field */}
-      <View className="mb-12">
-        <Text style={fonts.textSemiBold} className="text-lg text-black mb-4">Confirmar senha</Text>
-        <View className="flex-row items-center bg-gray-50 border border-gray-200 rounded-xl px-4 py-4">
-          <View className="w-6 h-6 mr-3 items-center justify-center">
-            <Text className="text-gray-400 text-base">🔒</Text>
-          </View>
-          <TextInput
-            style={fonts.text}
-            className="flex-1 text-base text-gray-800"
-            placeholder="Senha"
-            placeholderTextColor="#9CA3AF"
-            value={confirmPassword}
-            onChangeText={(text) => {
-              setConfirmPassword(text);
-              if (text !== password) {
-                setErrors(prev => ({
-                  ...prev,
-                  confirmPassword: "Passwords do not match"
-                }));
-              } else {
-                setErrors(prev => ({
-                  ...prev,
-                  confirmPassword: ""
-                }));
-              }
-            }}
-            secureTextEntry={!showConfirmPassword}
-          />
-          <TouchableOpacity 
-            onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-            className="w-6 h-6 items-center justify-center"
-          >
-            <Text className="text-gray-400 text-base">{showConfirmPassword ? '👁' : '👁'}</Text>
-          </TouchableOpacity>
-        </View>
-        {errors.confirmPassword ? (
-          <Text style={fonts.text} className="text-red-500 text-sm mt-2">{errors.confirmPassword}</Text>
-        ) : null}
-      </View>
-
-      {/* Continue Button */}
-      <TouchableOpacity 
-        className="bg-blue-500 rounded-xl py-4 items-center mb-8"
-        onPress={handleRegister}
-        disabled={isLoading}
-      >
-        <Text style={fonts.textSemiBold} className="text-white text-lg">
-          {isLoading ? 'Criando conta...' : 'Continuar'}
-        </Text>
-      </TouchableOpacity>
-    </>
-  );
+  // Função para lidar com o botão de voltar
+  const handleBackButton = () => {
+    if (currentStep === 1) {
+      router.back()
+    } else {
+      setCurrentStep(currentStep - 1)
+    }
+  }
 
   return (
     <View className="flex-1 bg-white">
       <View className="flex-1 px-6 pt-16">
         {/* Header */}
         <View className="flex-row items-center mb-12">
-          <TouchableOpacity 
-            onPress={() => currentStep === 1 ? router.back() : setCurrentStep(1)}
-            className="mr-4"
-          >
+          <TouchableOpacity onPress={handleBackButton} className="mr-4">
             <Text className="text-2xl">←</Text>
           </TouchableOpacity>
-          <Text style={fonts.textSemiBold} className="text-xl text-black">Criando sua conta</Text>
+          <Text style={fonts.textSemiBold} className="text-xl text-black">
+            Criando sua conta
+          </Text>
         </View>
 
         {/* Form Content */}
-        {currentStep === 1 ? renderStep1() : renderStep2()}
+        {renderStepContent()}
       </View>
 
       {/* Bottom Home Indicator */}
@@ -324,5 +287,5 @@ export default function RegisterScreen() {
         <View className="w-32 h-1 bg-black rounded-full" />
       </View>
     </View>
-  );
+  )
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router} from 'expo-router';
 import { Expense } from '../../types';
 import useExpenses from '../../hooks/useExpenses';
 import { Ionicons } from '@expo/vector-icons';
